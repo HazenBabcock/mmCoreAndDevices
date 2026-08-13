@@ -275,6 +275,17 @@ void AravisCamera::ArvBufferUpdate(ArvBuffer *aBuffer)
   arvPixelFormat = arv_buffer_get_image_pixel_format(aBuffer);
   ArvPixelFormatUpdate(arvPixelFormat);
 
+  // A format with no case in ArvPixelFormatUpdate() leaves these at zero.
+  // Zero components is not one, so the copy below would take the RGB path and
+  // write four bytes per pixel into a buffer sized for zero. Refuse instead.
+  if ((img_buffer_bytes_per_pixel < 1) || (img_buffer_number_components < 1)){
+    std::stringstream msg;
+    msg << "Aravis Error, cannot copy an image in unsupported pixel format "
+	<< arvPixelFormat;
+    LogMessage(msg.str(), false);
+    return;
+  }
+
   // Image size updates.
   img_buffer_width = (int)arv_buffer_get_image_width(aBuffer);
   img_buffer_height = (int)arv_buffer_get_image_height(aBuffer);
@@ -283,6 +294,21 @@ void AravisCamera::ArvBufferUpdate(ArvBuffer *aBuffer)
   // Copy buffer to MM.
   arvBufferData = (unsigned char *)arv_buffer_get_data(aBuffer, &arvSize);
   size = img_buffer_width * img_buffer_height * img_buffer_bytes_per_pixel;
+
+  // The source must hold everything the destination is about to be filled
+  // with. For the packed RGB formats the camera sends three bytes per pixel
+  // and we expand to four, so compare against what will actually be read.
+  size_t arvNeeded = (img_buffer_number_components == 1)
+    ? size
+    : img_buffer_number_pixels * 3;
+  if (arvSize < arvNeeded){
+    std::stringstream msg;
+    msg << "Aravis Error, buffer holds " << arvSize << " bytes but "
+	<< arvNeeded << " are needed for a " << img_buffer_width << "x"
+	<< img_buffer_height << " image";
+    LogMessage(msg.str(), false);
+    return;
+  }
 
   if (img_buffer_size != size){
     if (img_buffer != nullptr){
@@ -296,7 +322,7 @@ void AravisCamera::ArvBufferUpdate(ArvBuffer *aBuffer)
   }
   else{
     rgb_to_rgba(img_buffer, arvBufferData, img_buffer_number_pixels);
-  }  
+  }
 }
 
 
@@ -408,7 +434,20 @@ void AravisCamera::ArvPixelFormatUpdate(guint32 arvPixelFormat)
     break;
 
   default:
-    printf ("Aravis Error: Pixel Format %d is not implemented\n", (int)arvPixelFormat);
+    // Leave the image description in a state callers can recognise as
+    // unusable, rather than keeping the previous format's values and
+    // describing the new data with them. printf() went to a console that
+    // Micro-Manager users do not have; this belongs in the log.
+    {
+      std::stringstream msg;
+      msg << "Aravis Error, pixel format " << (int)arvPixelFormat
+	  << " is not implemented";
+      LogMessage(msg.str(), false);
+    }
+    img_buffer_bit_depth = 0;
+    img_buffer_bytes_per_pixel = 0;
+    img_buffer_number_components = 0;
+    pixel_type = "Unknown";
     break;
   }
 }
