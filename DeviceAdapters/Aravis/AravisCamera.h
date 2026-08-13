@@ -39,8 +39,19 @@
 #include "arv.h"
 #include "glib.h"
 
+#include <atomic>
+#include <mutex>
+#include <string>
+
 
 #define ARV_ERROR 3141  // Should this be something specific?
+
+// SnapImage() waits this multiple of the exposure time for a frame, and never
+// less than the floor. Generous, because the alternative to a wrong guess is a
+// spurious timeout on a slow link -- but finite, because Aravis treats a zero
+// timeout as "block forever", which hangs the application.
+#define ARV_SNAP_EXPOSURE_FACTOR 5.0
+#define ARV_SNAP_MIN_TIMEOUT_US  5000000  // 5 seconds
 
 
 class AravisAcquisitionThread;
@@ -98,14 +109,16 @@ public:
   // Internal.
   void AcquisitionCallback(ArvStreamCallbackType, ArvBuffer *);
   void ArvBufferUpdate(ArvBuffer *aBuffer);
-  int ArvCheckError(GError *gerror) const;
+  int ArvCheckError(GError **gerror) const;
   void ArvGetExposure();
   void ArvPixelFormatUpdate(guint32 arvPixelFormat);
   int ArvStartSequenceAcquisition();
 
 
 private:
-  bool capturing;
+  // Written by the Micro-Manager thread and read by the Aravis stream
+  // callback thread, so plain bool is a data race.
+  std::atomic<bool> capturing;
   long counter;
   double exposure_time;
   unsigned img_buffer_bit_depth;
@@ -117,14 +130,18 @@ private:
   int img_buffer_width;
   bool initialized;
 
+  // Guards img_buffer and the size/format fields describing it. The stream
+  // callback may reallocate the buffer while the Micro-Manager thread is
+  // reading it.
+  mutable std::mutex img_buffer_mutex;
+
   ArvBuffer *arv_buffer;
   ArvCamera *arv_cam;
-  char *arv_cam_name;
+  std::string arv_cam_name;
   ArvDevice *arv_device;
   ArvStream *arv_stream;
   unsigned char *img_buffer;
   const char *pixel_type;
-  const char *trigger;
 };
 
 #endif // !_ARAVIS_CAMERA_H_
