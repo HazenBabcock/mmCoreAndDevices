@@ -121,6 +121,13 @@ private:
   std::atomic<bool> capturing;
   long counter;
   double exposure_time;
+
+  // Whether this camera has binning at all, answered once by Initialize().
+  // Asking Aravis for a feature the camera does not have fails every time, and
+  // Micro-Manager asks for binning on a timer, so the answer has to be
+  // remembered rather than rediscovered.
+  bool has_binning;
+
   unsigned img_buffer_bit_depth;
   int img_buffer_bytes_per_pixel;
   int img_buffer_height;

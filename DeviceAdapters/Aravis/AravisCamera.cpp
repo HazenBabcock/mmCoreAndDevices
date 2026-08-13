@@ -117,6 +117,7 @@ AravisCamera::AravisCamera(const char *name) :
   capturing(false),
   counter(0),
   exposure_time(0.0),
+  has_binning(false),
   img_buffer_bit_depth(0),
   img_buffer_bytes_per_pixel(0),
   img_buffer_height(0),
@@ -518,10 +519,19 @@ int AravisCamera::GetBinning() const
   gint dy;
   GError *gerror = nullptr;
 
+  // Micro-Manager calls this whenever it needs the binning factor, which
+  // includes once per image while tagging metadata. On a camera without
+  // binning the Aravis call fails every time, so a camera that simply does not
+  // bin filled the log with "[BinningHorizontal] Not found" during live
+  // acquisition. It bins by one, and that needs no camera to answer.
+  if (!has_binning){
+    return 1;
+  }
+
   arv_camera_get_binning(arv_cam, &dx, &dy, &gerror);
   ArvCheckError(&gerror);
-    
-  // dx is always dy for MM? Add check?  
+
+  // dx is always dy for MM? Add check?
   return (int)dx;
 }
 
@@ -681,10 +691,11 @@ int AravisCamera::Initialize()
   SetPropertyLimits(MM::g_Keyword_Binning, 1, 1);
   assert(ret == DEVICE_OK);
     
-  gboolean hasBinning;
-  hasBinning = arv_camera_is_binning_available(arv_cam, &gerror);
+  // Remembered, not just used here: every other binning entry point has to
+  // know the answer too, or it will ask Aravis and log a failure each time.
+  has_binning = arv_camera_is_binning_available(arv_cam, &gerror);
   ArvCheckError(&gerror);
-  if (hasBinning){
+  if (has_binning){
     gint bmin,bmax,binc;
 
     //Assuming X/Y symmetric..
@@ -964,6 +975,17 @@ int AravisCamera::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
   std::string binning;
   GError *gerror = nullptr;
 
+  // Micro-Manager refreshes properties on a timer, so a camera without binning
+  // logged an Aravis failure here once per refresh, forever. The property is
+  // still offered, fixed at 1, because Micro-Manager expects cameras to have
+  // one; it just no longer costs a failed register read to report it.
+  if (!has_binning){
+    if (eAct == MM::BeforeGet){
+      pProp->Set(1L);
+    }
+    return DEVICE_OK;
+  }
+
   if (eAct == MM::AfterSet){
     if (!capturing){
       pProp->Get(binning);
@@ -1190,6 +1212,12 @@ int AravisCamera::OnTriggerSource(MM::PropertyBase* pProp, MM::ActionType eAct)
 int AravisCamera::SetBinning(int binSize)
 {
   GError *gerror = nullptr;
+
+  // The Binning property offers only "1" on a camera that cannot bin, so the
+  // only value that reaches here is the one it already has.
+  if (!has_binning){
+    return (binSize == 1) ? DEVICE_OK : DEVICE_UNSUPPORTED_COMMAND;
+  }
 
   arv_camera_set_binning(arv_cam, (gint)binSize, (gint)binSize, &gerror);
   ArvCheckError(&gerror);
