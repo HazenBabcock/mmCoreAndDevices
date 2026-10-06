@@ -1,0 +1,12 @@
+<project name="AravisCamera">
+   <import file="../../../buildscripts/deviceadapter.xml"/>
+
+	<property name="aravis.libs" location="${mm.thirdpartypublic}/aravis/aravis-0.8.36-bin"/>
+
+	<!-- Aravis and every DLL it loads, which is what the x64 directory holds -->
+	<target name="install-x64">
+		<copy todir="${mm.dll.installdir}">
+			<fileset dir="${aravis.libs}/x64" includes="*.dll"/>
+		</copy>
+	</target>
+</project>

@@ -548,6 +548,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NikonAZ100SDK", "SecretDevi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EnderscopeStage", "DeviceAdapters\EnderscopeStage\EnderscopeStage.vcxproj", "{2E5B103B-0D6F-4D73-9309-0ECB807A5154}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AravisCamera", "DeviceAdapters\Aravis\AravisCamera.vcxproj", "{7D102B76-A93A-48E9-847A-19B788732CF4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -1646,6 +1648,10 @@ Global
 		{2E5B103B-0D6F-4D73-9309-0ECB807A5154}.Debug|x64.Build.0 = Debug|x64
 		{2E5B103B-0D6F-4D73-9309-0ECB807A5154}.Release|x64.ActiveCfg = Release|x64
 		{2E5B103B-0D6F-4D73-9309-0ECB807A5154}.Release|x64.Build.0 = Release|x64
+		{7D102B76-A93A-48E9-847A-19B788732CF4}.Debug|x64.ActiveCfg = Debug|x64
+		{7D102B76-A93A-48E9-847A-19B788732CF4}.Debug|x64.Build.0 = Debug|x64
+		{7D102B76-A93A-48E9-847A-19B788732CF4}.Release|x64.ActiveCfg = Release|x64
+		{7D102B76-A93A-48E9-847A-19B788732CF4}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
